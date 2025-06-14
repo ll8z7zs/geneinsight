@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genetic Variant Annotation Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #212529;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 960px;
+            margin: 40px auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .step { display: none; margin-bottom: 20px; }
+        .step.active { display: block; }
+
+        h1 {
+            font-size: 2.25rem;
+            color: #004085; /* Darker blue for main title */
+            margin-bottom: 30px;
+            text-align: center;
+            font-weight: 600;
+        }
+        h2 {
+            font-size: 1.75rem;
+            color: #343a40;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #dee2e6;
+            font-weight: 500;
+        }
+        h3 {
+            font-size: 1.25rem;
+            color: #495057;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        label {
+            display: block;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+        input[type="file"], input[type="text"], select, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 0.95rem;
+        }
+        input[type="file"] {
+            padding: 8px; /* Adjust padding for file input */
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 18px; /* Slightly adjusted padding */
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            margin-right: 10px; /* Add some space between buttons */
+            font-size: 1rem;
+            font-weight: 500;
+            transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        button:hover {
+            background-color: #0056b3;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button:active {
+            background-color: #004085;
+        }
+        button.secondary {
+            background-color: #6c757d;
+        }
+        button.secondary:hover {
+            background-color: #5a6268;
+        }
+         button.secondary:active {
+            background-color: #545b62;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* Subtle shadow for table */
+        }
+        .results-table th, .results-table td {
+            border: 1px solid #dee2e6;
+            padding: 10px 12px; /* Adjusted padding */
+            text-align: left;
+        }
+        .results-table th {
+            background-color: #e9ecef;
+            color: #495057;
+            font-weight: 600;
+        }
+        .results-table tr:nth-child(even) {
+            background-color: #f8f9fa; /* Zebra striping for rows */
+        }
+
+        #geneReport {
+            white-space: pre-wrap;
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 4px;
+            border: 1px solid #ced4da;
+            min-height: 200px;
+            font-family: inherit; /* Use body font */
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-top: 15px;
+        }
+        .spinner {
+            border: 4px solid #e9ecef; /* Light grey */
+            border-top: 4px solid #007bff; /* Blue */
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 25px auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .default-info, small {
+            color: #6c757d;
+            font-size: 0.85em;
+            margin-top: 8px;
+            display: block; /* Ensure it takes its own line if needed */
+        }
+        .hpo-autocomplete-wrapper { position: relative; margin-bottom: 5px; }
+        .hpo-tags {
+            display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; margin-bottom: 5px;
+        }
+        .hpo-tag {
+            background: #e3f2fd;
+            color: #004085; /* Darker blue text for better contrast */
+            border-radius: 15px; /* More rounded tags */
+            padding: 6px 12px;
+            display: flex;
+            align-items: center;
+            font-size: 0.9em;
+            border: 1px solid #add8e6; /* Light blue border */
+        }
+        .hpo-tag .remove-tag {
+            margin-left: 8px;
+            cursor: pointer;
+            color: #dc3545; /* Red for remove icon */
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .hpo-tag .remove-tag:hover {
+            color: #c82333;
+        }
+        .autocomplete-list {
+            position: absolute;
+            background: #fff;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            z-index: 1000; /* Ensure it's on top */
+            width: calc(100% - 2px); /* Adjust width considering border */
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .autocomplete-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .autocomplete-item:hover, .autocomplete-item.active {
+            background: #e9ecef;
+            color: #004085;
+        }
+        /* Ensure paragraph text within sections is styled consistently */
+        .step p {
+            margin-bottom: 10px;
+            color: #343a40;
+        }
+        .step p strong {
+            color: #212529;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Genetic Variant Annotation Workflow</h1>
+
+    <!-- Step 1: File Upload and HPO Selection -->
+    <div id="step1" class="step active">
+        <h2>Step 1: Upload VCF and Select HPO Terms</h2>
+        <label for="vcfFile">Upload Patient's VCF File:</label>
+        <input type="file" id="vcfFile" accept=".vcf,.vcf.gz">
+        <div class="default-info">Default demo file: HG001_GRCh38_1_22_v4.2.1_benchmark.vcf.gz (if none selected)</div>
+
+        <label for="hpoTermsInput">Select Relevant HPO Terms:</label> <!-- Changed for attribute to match input ID -->
+        <div class="hpo-autocomplete-wrapper">
+            <input type="text" id="hpoTermsInput" placeholder="輸入HPO term或名稱，自動補全" autocomplete="off">
+            <div id="autocompleteList" class="autocomplete-list" style="display:none;"></div>
+        </div>
+        <div id="hpoTags" class="hpo-tags"></div>
+        <small>輸入HPO term或關鍵字，自動補全後點擊加入。可移除tag。</small>
+
+        <button onclick="goToStep2()">Next: Annotate Variants</button>
+    </div>
+
+    <!-- Step 2: Variant Annotation Results -->
+    <div id="step2" class="step">
+        <h2>Step 2: Clinical Variant Annotation</h2>
+        <p><strong>Uploaded VCF:</strong> <span id="uploadedFileName"></span></p>
+        <p><strong>Selected HPO Terms:</strong> <span id="selectedHpoDisplay"></span></p>
+        <div id="annotationSpinner" class="spinner"></div>
+        <h3>Pathogenic Variants Found:</h3>
+        <div id="variantResults">
+            <p>Annotation in progress or no variants to display yet.</p>
+        </div>
+        <button onclick="goToStep3()">Next: Generate Gene Report</button>
+        <button onclick="goBackToStep1()" class="secondary">Back</button>
+    </div>
+
+    <!-- Step 3: Gene Report -->
+    <div id="step3" class="step">
+        <h2>Step 3: Generated Gene Report (Simulated)</h2>
+        <div id="reportSpinner" class="spinner"></div>
+        <div id="geneReport">
+            <p>Report generation in progress...</p>
+        </div>
+        <button onclick="startOver()" class="secondary">Start Over</button>
+        <button onclick="goBackToStep2()" class="secondary">Back</button>
+    </div>
+</div>
+
+<script>
+    let currentVcfFile = null;
+    let currentVcfFileName = "HG001_GRCh38_1_22_v4.2.1_benchmark.vcf.gz"; // Default filename for display
+    let currentHpoTerms = "";
+    let pathogenicVariantsData = []; // To store simulated variant data for report generation
+    let selectedHpoTerms = []; // 儲存已選 HPO term 物件 {id, name}
+
+    // HPO terms from annotate_vcf_advanced.py
+    const defaultHpoTerms = [
+        "HP:0002665", // 肺腺癌 (Lung adenocarcinoma)
+        "HP:0002829", // 腫瘤生長 (Neoplasm growth)
+        "HP:0002828", // 惡性腫瘤 (Malignant neoplasm)
+        "HP:0100526", // 肺腫瘤 (Lung neoplasm)
+        "HP:0002104", // 呼吸困難 (Dyspnea)
+        "HP:0002204", // 咳嗽 (Cough)
+        "HP:0002861", // 胸痛 (Chest pain)
+        "HP:0002090", // 血痰 (Hemoptysis)
+        "HP:0002883", // 肺功能異常 (Abnormal pulmonary function)
+        "HP:0004305", // 肺浸潤 (Pulmonary infiltrates)
+        "HP:0006536", // 肺纖維化 (Pulmonary fibrosis)
+        "HP:0002206", // 呼吸道感染 (Respiratory tract infection)
+        "HP:0003002", // 肺不張 (Atelectasis)
+        "HP:0002105", // 呼吸衰竭 (Respiratory failure)
+        "HP:0002207"  // 慢性阻塞性肺疾病 (Chronic obstructive pulmonary disease)
+    ].join(', ');
+
+    document.addEventListener('DOMContentLoaded', (event) => {
+        // 解析 defaultHpoTerms 並自動加 tag
+        selectedHpoTerms = defaultHpoTerms.split(',').map(s => {
+            const code = s.trim().split(' ')[0];
+            const name = s.trim().replace(/^HP:\d+\s*/, '');
+            return { id: code, name: name || code };
+        });
+        renderHpoTags();
+        document.getElementById('hpoTermsInput').value = '';
+    });
+
+    function showStep(stepId) {
+        document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
+        document.getElementById(stepId).classList.add('active');
+    }
+
+    function showSpinner(spinnerId, show) {
+        document.getElementById(spinnerId).style.display = show ? 'block' : 'none';
+    }
+
+    function goToStep2() {
+        const vcfFileInput = document.getElementById('vcfFile');
+        if (vcfFileInput.files.length > 0) {
+            currentVcfFile = vcfFileInput.files[0];
+            currentVcfFileName = currentVcfFile.name;
+        } else {
+            currentVcfFile = null;
+        }
+        // 取得 tag 內容
+        if (selectedHpoTerms.length === 0) {
+            alert("請至少選擇一個 HPO term。");
+            return;
+        }
+        currentHpoTerms = selectedHpoTerms.map(t => t.id).join(', ');
+        document.getElementById('uploadedFileName').textContent = currentVcfFileName;
+        document.getElementById('selectedHpoDisplay').textContent = currentHpoTerms;
+        showStep('step2');
+        document.getElementById('variantResults').innerHTML = "<p>Processing annotations...</p>";
+        showSpinner('annotationSpinner', true);
+        setTimeout(() => {
+            simulateVariantAnnotation();
+            showSpinner('annotationSpinner', false);
+        }, 2000);
+    }
+
+    function simulateVariantAnnotation() {
+        // Simulate finding pathogenic variants based on VCF and HPO terms
+        pathogenicVariantsData = [
+            { chr: "7", pos: "55249071", ref: "C", alt: "T", gene: "EGFR", id: "rs121913500", type: "SNV", pathogenicity: "Pathogenic", details: "Known activating mutation in EGFR, associated with lung adenocarcinoma (HP:0002665). Responds to EGFR inhibitors." },
+            { chr: "12", pos: "25398284", ref: "G", alt: "T", gene: "KRAS", id: "rs112445441", type: "SNV", pathogenicity: "Likely Pathogenic", details: "G12C mutation in KRAS, common in lung cancer (HP:0100526). Potential target for specific inhibitors." },
+            { chr: "17", pos: "7674903", ref: "C", alt: "A", gene: "TP53", id: "rs28934573", type: "SNV", pathogenicity: "Pathogenic", details: "Loss-of-function mutation in TP53, frequently observed in various cancers including lung cancer (HP:0002828)." }
+        ];
+
+        const selectedTermsArray = currentHpoTerms.toLowerCase().split(',').map(term => term.trim().replace(/\s*\(.*\)\s*/g, '')); // Remove text in parentheses for matching
+        
+        const filteredVariants = pathogenicVariantsData.filter(variant => {
+            // Check if any selected HPO term is present in variant details or if gene matches
+            // Also check if the HPO term itself (e.g., "HP:0002665") is in the details
+            return selectedTermsArray.some(term => 
+                variant.details.toLowerCase().includes(term) || 
+                variant.gene.toLowerCase().includes(term) ||
+                variant.details.includes(term.toUpperCase()) // For matching HP:XXXX codes
+            );
+        });
+        
+        const variantsToDisplay = (filteredVariants.length > 0 || selectedTermsArray.includes("all")) ? filteredVariants : pathogenicVariantsData;
+
+
+        if (variantsToDisplay.length > 0) {
+            let tableHtml = '<table class="results-table"><thead><tr><th>Chr</th><th>Pos</th><th>ID</th><th>Ref</th><th>Alt</th><th>Gene</th><th>Pathogenicity</th><th>Details</th></tr></thead><tbody>';
+            variantsToDisplay.forEach(variant => {
+                tableHtml += `<tr>
+                    <td>${variant.chr}</td>
+                    <td>${variant.pos}</td>
+                    <td>${variant.id || '.'}</td>
+                    <td>${variant.ref}</td>
+                    <td>${variant.alt}</td>
+                    <td>${variant.gene}</td>
+                    <td>${variant.pathogenicity}</td>
+                    <td>${variant.details}</td>
+                </tr>`;
+            });
+            tableHtml += '</tbody></table>';
+            document.getElementById('variantResults').innerHTML = tableHtml;
+        } else {
+            document.getElementById('variantResults').innerHTML = "<p>No pathogenic variants found matching the HPO terms for this demo. Displaying all simulated pathogenic variants.</p>";
+            // Fallback to show all if no specific match for better demo experience
+            let tableHtml = '<table class="results-table"><thead><tr><th>Chr</th><th>Pos</th><th>ID</th><th>Ref</th><th>Alt</th><th>Gene</th><th>Pathogenicity</th><th>Details</th></tr></thead><tbody>';
+            pathogenicVariantsData.forEach(variant => {
+                tableHtml += `<tr>
+                    <td>${variant.chr}</td>
+                    <td>${variant.pos}</td>
+                    <td>${variant.id || '.'}</td>
+                    <td>${variant.ref}</td>
+                    <td>${variant.alt}</td>
+                    <td>${variant.gene}</td>
+                    <td>${variant.pathogenicity}</td>
+                    <td>${variant.details}</td>
+                </tr>`;
+            });
+            tableHtml += '</tbody></table>';
+            document.getElementById('variantResults').innerHTML = tableHtml;
+        }
+    }
+
+    function goToStep3() {
+        showStep('step3');
+        document.getElementById('geneReport').innerHTML = "<p>Generating gene report using MedGemma (simulated)...</p>";
+        showSpinner('reportSpinner', true);
+
+        setTimeout(() => {
+            simulateGeneReportGeneration();
+            showSpinner('reportSpinner', false);
+        }, 2500); 
+    }
+
+    function simulateGeneReportGeneration() {
+        const reportDiv = document.getElementById('geneReport');
+        // Use the variants that were displayed in step 2 for the report
+        const variantsForReport = pathogenicVariantsData.filter(variant => {
+             const selectedTermsArray = currentHpoTerms.toLowerCase().split(',').map(term => term.trim().replace(/\s*\(.*\)\s*/g, ''));
+             return selectedTermsArray.some(term => 
+                variant.details.toLowerCase().includes(term) || 
+                variant.gene.toLowerCase().includes(term) ||
+                variant.details.includes(term.toUpperCase())
+            );
+        });
+        const finalVariantsForReport = (variantsForReport.length > 0 || currentHpoTerms.toLowerCase().split(',').map(term => term.trim()).includes("all")) ? variantsForReport : pathogenicVariantsData;
+
+
+        if (finalVariantsForReport.length === 0) { // Check if any variants are left for the report
+             reportDiv.innerHTML = `
+                <h3>Patient Gene Report</h3>
+                <p><strong>Patient VCF:</strong> ${currentVcfFileName}</p>
+                <p><strong>Associated HPO Terms:</strong> ${currentHpoTerms || 'N/A'}</p>
+                <hr>
+                <p>No significant pathogenic variants were identified for report generation based on the provided data and HPO terms in this simulation.</p>
+                <p>Further analysis or broader HPO term selection might be necessary.</p>
+            `;
+            return;
+        }
+
+        let reportText = `
+            <h3>Patient Gene Report (Simulated by MedGemma)</h3>
+            <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+            <p><strong>Patient VCF:</strong> ${currentVcfFileName}</p>
+            <p><strong>Associated HPO Terms:</strong> ${currentHpoTerms}</p>
+            <hr>
+            <h4>Summary of Findings:</h4>
+            <p>Analysis of the provided VCF file in the context of HPO terms: ${currentHpoTerms}, has identified the following clinically significant variants. These findings should be correlated with clinical presentation and other diagnostic information by a qualified healthcare professional.</p>
+            
+            <h4>Variant Details:</h4>
+        `;
+
+        finalVariantsForReport.forEach((variant, index) => {
+            reportText += `
+            <p><strong>Variant ${index + 1}: ${variant.gene} (${variant.chr}:${variant.pos} ${variant.ref}>${variant.alt})</strong></p>
+            <ul>
+                <li><strong>Classification:</strong> ${variant.pathogenicity}</li>
+                <li><strong>Annotation:</strong> ${variant.details}</li>
+                <li><strong>Potential Implications:</strong> Based on the ${variant.gene} gene's role and the nature of this variant, it is considered ${variant.pathogenicity.toLowerCase()}. This variant may contribute to the patient's phenotype or predisposition to conditions associated with the selected HPO terms. For example, alterations in ${variant.gene} are known to be involved in [mention general disease area, e.g., cancer development, metabolic disorders - this would be more specific with real MedGemma].</li>
+                <li><strong>Recommendations (Conceptual):</strong> Consider confirmatory testing if not already performed. Genetic counseling is recommended. Specific therapeutic options targeting pathways involving ${variant.gene} may be relevant (e.g., [mention conceptual therapy type]).</li>
+            </ul>
+            `;
+        });
+
+        reportText += `
+            <hr>
+            <h4>Disclaimer:</h4>
+            <p>This report is generated for demonstration purposes using simulated data and a conceptual "MedGemma" model. It is not a substitute for professional medical advice, diagnosis, or treatment. All interpretations and clinical decisions should be made by qualified healthcare providers.</p>
+        `;
+        reportDiv.innerHTML = reportText;
+    }
+    
+    function goBackToStep1() {
+        showStep('step1');
+    }
+    function goBackToStep2() {
+        showStep('step2');
+        if (document.getElementById('variantResults').innerHTML.includes("Annotation in progress")) {
+             simulateVariantAnnotation(); 
+        }
+    }
+
+    function startOver() {
+        currentVcfFile = null;
+        currentVcfFileName = "HG001_GRCh38_1_22_v4.2.1_benchmark.vcf.gz";
+        document.getElementById('vcfFile').value = '';
+        // 重新加回預設 tag
+        selectedHpoTerms = defaultHpoTerms.split(',').map(s => {
+            const code = s.trim().split(' ')[0];
+            const name = s.trim().replace(/^HP:\d+\s*/, '');
+            return { id: code, name: name || code };
+        });
+        renderHpoTags();
+        document.getElementById('hpoTermsInput').value = '';
+        currentHpoTerms = defaultHpoTerms;
+        pathogenicVariantsData = [];
+        document.getElementById('variantResults').innerHTML = '<p>Annotation in progress or no variants to display yet.</p>';
+        document.getElementById('geneReport').innerHTML = '<p>Report generation in progress...</p>';
+        showStep('step1');
+    }
+
+    // Initialize
+    showStep('step1');
+    // Set default HPO terms on load (already handled by DOMContentLoaded)
+    // currentHpoTerms = defaultHpoTerms; // Initialize currentHpoTerms as well
+
+    // HPO API autocomplete
+    const hpoInput = document.getElementById('hpoTermsInput');
+    const autocompleteList = document.getElementById('autocompleteList');
+    const hpoTagsDiv = document.getElementById('hpoTags');
+
+    // autocomplete 輸入事件
+    hpoInput.addEventListener('input', async function() {
+        const q = hpoInput.value.trim();
+        if (!q) {
+            autocompleteList.style.display = 'none';
+            return;
+        }
+        // 呼叫 HPO API
+        autocompleteList.innerHTML = '<div class="autocomplete-item">搜尋中...</div>';
+        autocompleteList.style.display = 'block';
+        try {
+            const res = await fetch(`https://hpo.jax.org/api/hpo/search/?q=${encodeURIComponent(q)}`);
+            const data = await res.json();
+            if (data.terms && data.terms.length > 0) {
+                autocompleteList.innerHTML = data.terms.slice(0, 10).map(term =>
+                    `<div class="autocomplete-item" data-id="${term.id}" data-label="${term.name}">${term.id} - ${term.name}</div>`
+                ).join('');
+            } else {
+                autocompleteList.innerHTML = '<div class="autocomplete-item">查無結果</div>';
+            }
+        } catch {
+            autocompleteList.innerHTML = '<div class="autocomplete-item">API 錯誤</div>';
+        }
+    });
+
+    // autocomplete 選擇
+    autocompleteList.addEventListener('mousedown', function(e) {
+        if (e.target.classList.contains('autocomplete-item') && e.target.dataset.id) {
+            const id = e.target.dataset.id;
+            const name = e.target.dataset.label;
+            if (!selectedHpoTerms.some(t => t.id === id)) {
+                selectedHpoTerms.push({ id, name });
+                renderHpoTags();
+            }
+            hpoInput.value = '';
+            autocompleteList.style.display = 'none';
+        }
+    });
+
+    // 輸入 enter 直接搜尋
+    hpoInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && autocompleteList.style.display === 'block') {
+            const first = autocompleteList.querySelector('.autocomplete-item[data-id]');
+            if (first) {
+                first.dispatchEvent(new MouseEvent('mousedown'));
+                e.preventDefault();
+            }
+        }
+    });
+
+    // tag 渲染
+    function renderHpoTags() {
+        hpoTagsDiv.innerHTML = selectedHpoTerms.map((term, idx) =>
+            `<span class="hpo-tag">${term.id}${term.name && term.name !== term.id ? ' - ' + term.name : ''}<span class="remove-tag" data-idx="${idx}">&times;</span></span>`
+        ).join('');
+    }
+
+    // tag 移除
+    hpoTagsDiv.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-tag')) {
+            const idx = parseInt(e.target.dataset.idx, 10);
+            selectedHpoTerms.splice(idx, 1);
+            renderHpoTags();
+        }
+    });
+
+    // 點外面關閉 autocomplete
+    document.addEventListener('click', function(e) {
+        if (!autocompleteList.contains(e.target) && e.target !== hpoInput) {
+            autocompleteList.style.display = 'none';
+        }
+    });
+</script>
+
+</body>
+</html>
